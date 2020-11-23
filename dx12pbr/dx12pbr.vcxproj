@@ -182,6 +182,7 @@
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\MathHelper.h" />
     <ClInclude Include="src\Common\UploadBuffer.h" />
+    <ClInclude Include="src\PBR.h" />
     <ClInclude Include="src\ShadowMap.h" />
     <ClInclude Include="src\Ssao.h" />
   </ItemGroup>

@@ -70,10 +70,15 @@ struct MaterialData
 	// Used in texture mapping.
 	DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
 
-	UINT DiffuseMapIndex = 0;
+	UINT AlbedoMapIndex = 0;
 	UINT NormalMapIndex = 0;
+	UINT MetallicMapIndex = 0;
+	UINT RoughnessMapIndex = 0;
+
+	UINT AoMapIndex = 0;
 	UINT MaterialPad1;
 	UINT MaterialPad2;
+	UINT MaterialPad3;
 };
 
 struct Vertex

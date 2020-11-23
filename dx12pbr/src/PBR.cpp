@@ -2,201 +2,29 @@
 // SsaoApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
 //***************************************************************************************
 
-#include "src/Common/d3dApp.h"
-#include "src/Common/MathHelper.h"
-#include "src/Common/UploadBuffer.h"
-#include "src/Common/GeometryGenerator.h"
-#include "src/Common/Camera.h"
-#include "FrameResource.h"
-#include "ShadowMap.h"
-#include "Ssao.h"
-
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
-using namespace DirectX::PackedVector;
-
-const int gNumFrameResources = 3;
-
-// Lightweight structure stores parameters to draw a shape.  This will
-// vary from app-to-app.
-struct RenderItem
-{
-    RenderItem() = default;
-    RenderItem(const RenderItem& rhs) = delete;
-
-    // World matrix of the shape that describes the object's local space
-    // relative to the world space, which defines the position, orientation,
-    // and scale of the object in the world.
-    XMFLOAT4X4 World = MathHelper::Identity4x4();
-
-    XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
-
-    // Dirty flag indicating the object data has changed and we need to update the constant buffer.
-    // Because we have an object cbuffer for each FrameResource, we have to apply the
-    // update to each FrameResource.  Thus, when we modify obect data we should set 
-    // NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
-    int NumFramesDirty = gNumFrameResources;
-
-    // Index into GPU constant buffer corresponding to the ObjectCB for this render item.
-    UINT ObjCBIndex = -1;
-
-    Material* Mat = nullptr;
-    MeshGeometry* Geo = nullptr;
-
-    // Primitive topology.
-    D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-    // DrawIndexedInstanced parameters.
-    UINT IndexCount = 0;
-    UINT StartIndexLocation = 0;
-    int BaseVertexLocation = 0;
-};
-
-enum class RenderLayer : int
-{
-    Opaque = 0,
-    Debug,
-    Sky,
-    Count
-};
-
-class SsaoApp : public D3DApp
-{
-public:
-    SsaoApp(HINSTANCE hInstance);
-    SsaoApp(const SsaoApp& rhs) = delete;
-    SsaoApp& operator=(const SsaoApp& rhs) = delete;
-    ~SsaoApp();
-
-    virtual bool Initialize()override;
-
-private:
-    virtual void CreateRtvAndDsvDescriptorHeaps()override;
-    virtual void OnResize()override;
-    virtual void Update(const GameTimer& gt)override;
-    virtual void Draw(const GameTimer& gt)override;
-
-    virtual void OnMouseDown(WPARAM btnState, int x, int y)override;
-    virtual void OnMouseUp(WPARAM btnState, int x, int y)override;
-    virtual void OnMouseMove(WPARAM btnState, int x, int y)override;
-
-    void OnKeyboardInput(const GameTimer& gt);
-    void AnimateMaterials(const GameTimer& gt);
-    void UpdateObjectCBs(const GameTimer& gt);
-    void UpdateMaterialBuffer(const GameTimer& gt);
-    void UpdateShadowTransform(const GameTimer& gt);
-    void UpdateMainPassCB(const GameTimer& gt);
-    void UpdateShadowPassCB(const GameTimer& gt);
-    void UpdateSsaoCB(const GameTimer& gt);
-
-    void LoadTextures();
-    void BuildRootSignature();
-    void BuildSsaoRootSignature();
-    void BuildDescriptorHeaps();
-    void BuildShadersAndInputLayout();
-    void BuildShapeGeometry();
-    void BuildSkullGeometry();
-    void BuildPSOs();
-    void BuildFrameResources();
-    void BuildMaterials();
-    void BuildRenderItems();
-    void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
-    void DrawSceneToShadowMap();
-    void DrawNormalsAndDepth();
-
-    CD3DX12_CPU_DESCRIPTOR_HANDLE GetCpuSrv(int index)const;
-    CD3DX12_GPU_DESCRIPTOR_HANDLE GetGpuSrv(int index)const;
-    CD3DX12_CPU_DESCRIPTOR_HANDLE GetDsv(int index)const;
-    CD3DX12_CPU_DESCRIPTOR_HANDLE GetRtv(int index)const;
-
-    std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
-
-private:
-
-    std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-    FrameResource* mCurrFrameResource = nullptr;
-    int mCurrFrameResourceIndex = 0;
-
-    ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-    ComPtr<ID3D12RootSignature> mSsaoRootSignature = nullptr;
-
-    ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
-
-    std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-    std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
-    std::unordered_map<std::string, std::unique_ptr<Texture>> mTextures;
-    std::unordered_map<std::string, ComPtr<ID3DBlob>> mShaders;
-    std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> mPSOs;
-
-    std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
-
-    // List of all the render items.
-    std::vector<std::unique_ptr<RenderItem>> mAllRitems;
-
-    // Render items divided by PSO.
-    std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
-
-    UINT mSkyTexHeapIndex = 0;
-    UINT mShadowMapHeapIndex = 0;
-    UINT mSsaoHeapIndexStart = 0;
-    UINT mSsaoAmbientMapIndex = 0;
-
-    UINT mNullCubeSrvIndex = 0;
-    UINT mNullTexSrvIndex1 = 0;
-    UINT mNullTexSrvIndex2 = 0;
-
-    CD3DX12_GPU_DESCRIPTOR_HANDLE mNullSrv;
-
-    PassConstants mMainPassCB;  // index 0 of pass cbuffer.
-    PassConstants mShadowPassCB;// index 1 of pass cbuffer.
-
-    Camera mCamera;
-
-    std::unique_ptr<ShadowMap> mShadowMap;
-
-    std::unique_ptr<Ssao> mSsao;
-
-    DirectX::BoundingSphere mSceneBounds;
-
-    float mLightNearZ = 0.0f;
-    float mLightFarZ = 0.0f;
-    XMFLOAT3 mLightPosW;
-    XMFLOAT4X4 mLightView = MathHelper::Identity4x4();
-    XMFLOAT4X4 mLightProj = MathHelper::Identity4x4();
-    XMFLOAT4X4 mShadowTransform = MathHelper::Identity4x4();
-
-    float mLightRotationAngle = 0.0f;
-    XMFLOAT3 mBaseLightDirections[3] = {
-        XMFLOAT3(0.57735f, -0.57735f, 0.57735f),
-        XMFLOAT3(-0.57735f, -0.57735f, 0.57735f),
-        XMFLOAT3(0.0f, -0.707f, -0.707f)
-    };
-    XMFLOAT3 mRotatedLightDirections[3];
-
-    POINT mLastMousePos;
-};
+#include "PBR.h"
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
-    PSTR cmdLine, int showCmd)
+	PSTR cmdLine, int showCmd)
 {
-    // Enable run-time memory check for debug builds.
+	// Enable run-time memory check for debug builds.
 #if defined(DEBUG) | defined(_DEBUG)
-    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
-    try
-    {
-        SsaoApp theApp(hInstance);
-        if (!theApp.Initialize())
-            return 0;
+	try
+	{
+		SsaoApp theApp(hInstance);
+		if (!theApp.Initialize())
+			return 0;
 
-        return theApp.Run();
-    }
-    catch (DxException& e)
-    {
-        MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
-        return 0;
-    }
+		return theApp.Run();
+	}
+	catch (DxException& e)
+	{
+		MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
+		return 0;
+	}
 }
 
 SsaoApp::SsaoApp(HINSTANCE hInstance)
@@ -245,6 +73,8 @@ bool SsaoApp::Initialize()
     BuildRenderItems();
     BuildFrameResources();
     BuildPSOs();
+
+    UpdateMainPassCB();
 
     mSsao->SetPSOs(mPSOs["ssao"].Get(), mPSOs["ssaoBlur"].Get());
 
@@ -297,6 +127,11 @@ void SsaoApp::OnResize()
 
 void SsaoApp::Update(const GameTimer& gt)
 {
+	// Start the Dear ImGui frame
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
     OnKeyboardInput(gt);
 
     // Cycle through the circular frame resource array.
@@ -435,8 +270,13 @@ void SsaoApp::Draw(const GameTimer& gt)
     mCommandList->SetPipelineState(mPSOs["opaque"].Get());
     DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
 
-    mCommandList->SetPipelineState(mPSOs["debug"].Get());
-    DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Debug]);
+    if (m_DrawDebug)
+    {
+        mCommandList->SetPipelineState(mPSOs["debug"].Get());
+        DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Debug]);
+    }
+
+    OnImGuiDraw();
 
     mCommandList->SetPipelineState(mPSOs["sky"].Get());
     DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Sky]);
@@ -444,6 +284,13 @@ void SsaoApp::Draw(const GameTimer& gt)
     // Indicate a state transition on the resource usage.
     mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+
+   
+
+	//End ImGui
+	mCommandList->SetDescriptorHeaps(1, mSrvHeap.GetAddressOf());
+	ImGui::Render();
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), mCommandList.Get());
 
     // Done recording commands.
     ThrowIfFailed(mCommandList->Close());
@@ -463,6 +310,14 @@ void SsaoApp::Draw(const GameTimer& gt)
     // Because we are on the GPU timeline, the new fence point won't be 
     // set until the GPU finishes processing all the commands prior to this Signal().
     mCommandQueue->Signal(mFence.Get(), mCurrentFence);
+}
+
+void SsaoApp::OnImGuiDraw()
+{
+    ImGui::Begin("DEBUG");
+    ImGui::Checkbox("Enable Debug Layer", &m_DrawDebug);
+
+    ImGui::End();
 }
 
 void SsaoApp::OnMouseDown(WPARAM btnState, int x, int y)
@@ -492,6 +347,14 @@ void SsaoApp::OnMouseMove(WPARAM btnState, int x, int y)
 
     mLastMousePos.x = x;
     mLastMousePos.y = y;
+}
+
+void SsaoApp::UpdateMainPassCB()
+{
+    mMainPassCB.AmbientLight = { 0.4f, 0.4f, 0.6f, 1.0f };
+	mMainPassCB.Lights[0].Strength = { 0.4f, 0.4f, 0.5f };
+	mMainPassCB.Lights[1].Strength = { 0.1f, 0.1f, 0.1f };
+	mMainPassCB.Lights[2].Strength = { 0.0f, 0.0f, 0.0f };
 }
 
 void SsaoApp::OnKeyboardInput(const GameTimer& gt)
@@ -560,7 +423,7 @@ void SsaoApp::UpdateMaterialBuffer(const GameTimer& gt)
             matData.FresnelR0 = mat->FresnelR0;
             matData.Roughness = mat->Roughness;
             XMStoreFloat4x4(&matData.MatTransform, XMMatrixTranspose(matTransform));
-            matData.DiffuseMapIndex = mat->DiffuseSrvHeapIndex;
+            matData.AlbedoMapIndex = mat->DiffuseSrvHeapIndex;
             matData.NormalMapIndex = mat->NormalSrvHeapIndex;
 
             currMaterialBuffer->CopyData(mat->MatCBIndex, matData);
@@ -646,13 +509,27 @@ void SsaoApp::UpdateMainPassCB(const GameTimer& gt)
     mMainPassCB.FarZ = 1000.0f;
     mMainPassCB.TotalTime = gt.TotalTime();
     mMainPassCB.DeltaTime = gt.DeltaTime();
-    mMainPassCB.AmbientLight = { 0.4f, 0.4f, 0.6f, 1.0f };
+
     mMainPassCB.Lights[0].Direction = mRotatedLightDirections[0];
-    mMainPassCB.Lights[0].Strength = { 0.4f, 0.4f, 0.5f };
     mMainPassCB.Lights[1].Direction = mRotatedLightDirections[1];
-    mMainPassCB.Lights[1].Strength = { 0.1f, 0.1f, 0.1f };
     mMainPassCB.Lights[2].Direction = mRotatedLightDirections[2];
-    mMainPassCB.Lights[2].Strength = { 0.0f, 0.0f, 0.0f };
+
+    {
+        ImGui::Begin("Lighting");
+        ImGui::ColorEdit4("Ambient", &mMainPassCB.AmbientLight.x);
+
+        //MaxLights
+        for (int i = 0; i < 3; i++)
+        {
+            if (ImGui::CollapsingHeader(("light [" + std::to_string(i) + "]").c_str()))
+            {
+                ImGui::SliderFloat3("Direction", &mRotatedLightDirections[i].x, -1.0f, 1.0f);
+                ImGui::SliderFloat3("Strength", &mMainPassCB.Lights[i].Strength.x, 0.001f, 1.0f);
+
+            }
+        }
+        ImGui::End();
+    }
 
     auto currPassCB = mCurrFrameResource->PassCB.get();
     currPassCB->CopyData(0, mMainPassCB);
@@ -1517,19 +1394,22 @@ void SsaoApp::BuildRenderItems()
     mRitemLayer[(int)RenderLayer::Sky].push_back(skyRitem.get());
     mAllRitems.push_back(std::move(skyRitem));
 
-    auto quadRitem = std::make_unique<RenderItem>();
-    quadRitem->World = MathHelper::Identity4x4();
-    quadRitem->TexTransform = MathHelper::Identity4x4();
-    quadRitem->ObjCBIndex = 1;
-    quadRitem->Mat = mMaterials["bricks0"].get();
-    quadRitem->Geo = mGeometries["shapeGeo"].get();
-    quadRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    quadRitem->IndexCount = quadRitem->Geo->DrawArgs["quad"].IndexCount;
-    quadRitem->StartIndexLocation = quadRitem->Geo->DrawArgs["quad"].StartIndexLocation;
-    quadRitem->BaseVertexLocation = quadRitem->Geo->DrawArgs["quad"].BaseVertexLocation;
 
-    mRitemLayer[(int)RenderLayer::Debug].push_back(quadRitem.get());
-    mAllRitems.push_back(std::move(quadRitem));
+        auto quadRitem = std::make_unique<RenderItem>();
+        quadRitem->World = MathHelper::Identity4x4();
+        quadRitem->TexTransform = MathHelper::Identity4x4();
+        quadRitem->ObjCBIndex = 1;
+        quadRitem->Mat = mMaterials["bricks0"].get();
+        quadRitem->Geo = mGeometries["shapeGeo"].get();
+        quadRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        quadRitem->IndexCount = quadRitem->Geo->DrawArgs["quad"].IndexCount;
+        quadRitem->StartIndexLocation = quadRitem->Geo->DrawArgs["quad"].StartIndexLocation;
+        quadRitem->BaseVertexLocation = quadRitem->Geo->DrawArgs["quad"].BaseVertexLocation;
+
+
+        mRitemLayer[(int)RenderLayer::Debug].push_back(quadRitem.get());
+        mAllRitems.push_back(std::move(quadRitem));
+    
 
     auto boxRitem = std::make_unique<RenderItem>();
     XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 1.0f, 2.0f) * XMMatrixTranslation(0.0f, 0.5f, 0.0f));

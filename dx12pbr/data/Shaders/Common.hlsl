@@ -24,10 +24,16 @@ struct MaterialData
 	float3   FresnelR0;
 	float    Roughness;
 	float4x4 MatTransform;
+    
 	uint     DiffuseMapIndex;
 	uint     NormalMapIndex;
+    uint MetallicMapIndex;
+    uint RoughnessMapIndex;
+    
+    uint AoMapIndex;
 	uint     MatPad1;
 	uint     MatPad2;
+    uint     MatPad3;
 };
 
 TextureCube gCubeMap : register(t0);

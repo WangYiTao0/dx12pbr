@@ -131,5 +131,8 @@
     <ClInclude Include="src\Ssao.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\PBR.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
