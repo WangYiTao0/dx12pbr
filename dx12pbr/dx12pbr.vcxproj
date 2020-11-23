@@ -78,10 +78,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>F:\MyRepo\20201026_learn_Dx12book\dx12pbr\dx12pbr;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)Inc;$(ProjectDir);$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)/bin/DirectXTK12/Debug;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <LibraryPath>$(ProjectDir)/bin/DirectXTK12/Debug;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)Inc;$(ProjectDir);$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -121,6 +124,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>DirectXTK12.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -137,6 +141,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>DirectXTK12.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -154,8 +159,9 @@
     <ClCompile Include="src\Common\GameTimer.cpp" />
     <ClCompile Include="src\Common\GeometryGenerator.cpp" />
     <ClCompile Include="src\Common\MathHelper.cpp" />
-    <ClCompile Include="src\Common\WICTextureLoader12.cpp" />
     <ClCompile Include="src\PBR.cpp" />
+    <ClCompile Include="src\ShadowMap.cpp" />
+    <ClCompile Include="src\Ssao.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imgui\imconfig.h" />
@@ -176,7 +182,8 @@
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\MathHelper.h" />
     <ClInclude Include="src\Common\UploadBuffer.h" />
-    <ClInclude Include="src\Common\WICTextureLoader12.h" />
+    <ClInclude Include="src\ShadowMap.h" />
+    <ClInclude Include="src\Ssao.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
