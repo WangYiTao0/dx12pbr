@@ -150,6 +150,7 @@
     <ClCompile Include="src\Common\d3dApp.cpp" />
     <ClCompile Include="src\Common\d3dUtil.cpp" />
     <ClCompile Include="src\Common\DDSTextureLoader.cpp" />
+    <ClCompile Include="src\Common\FrameResource.cpp" />
     <ClCompile Include="src\Common\GameTimer.cpp" />
     <ClCompile Include="src\Common\GeometryGenerator.cpp" />
     <ClCompile Include="src\Common\MathHelper.cpp" />
@@ -169,6 +170,7 @@
     <ClInclude Include="src\Common\d3dUtil.h" />
     <ClInclude Include="src\Common\d3dx12.h" />
     <ClInclude Include="src\Common\DDSTextureLoader.h" />
+    <ClInclude Include="src\Common\FrameResource.h" />
     <ClInclude Include="src\Common\GameTimer.h" />
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\MathHelper.h" />
