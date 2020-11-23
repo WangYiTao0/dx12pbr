@@ -18,6 +18,8 @@
 // Include common HLSL code.
 #include "Common.hlsl"
 
+
+
 struct VertexIn
 {
 	float3 PosL    : POSITION;
@@ -36,6 +38,7 @@ struct VertexOut
 	float3 TangentW : TANGENT;
 	float2 TexC    : TEXCOORD;
 };
+
 
 VertexOut VS(VertexIn vin)
 {
@@ -76,8 +79,12 @@ float4 PS(VertexOut pin) : SV_Target
 	float4 diffuseAlbedo = matData.DiffuseAlbedo;
 	float3 fresnelR0 = matData.FresnelR0;
 	float  roughness = matData.Roughness;
+    
 	uint diffuseMapIndex = matData.DiffuseMapIndex;
 	uint normalMapIndex = matData.NormalMapIndex;
+    uint metallicMapIndex = matData.MetallicMapIndex;
+    uint roughnessMapIndex = matData.RoughnessMapIndex;
+    uint aoMapIndex = matData.AoMapIndex;
 	
     // Dynamically look up the texture in the array.
     diffuseAlbedo *= gTextureMaps[diffuseMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
@@ -94,11 +101,19 @@ float4 PS(VertexOut pin) : SV_Target
 	
     float4 normalMapSample = gTextureMaps[normalMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
 	float3 bumpedNormalW = NormalSampleToWorldSpace(normalMapSample.rgb, pin.NormalW, pin.TangentW);
+    
+    float metallicMapSample = gTextureMaps[metallicMapIndex].Sample(gsamAnisotropicWrap, pin.TexC).r;
+    float roughnessMapSample = gTextureMaps[roughnessMapIndex].Sample(gsamAnisotropicWrap, pin.TexC).r;
+    float aoMapSample = gTextureMaps[aoMapIndex].Sample(gsamAnisotropicWrap, pin.TexC).r;
 
+    
+    fresnelR0 = lerp(fresnelR0, diffuseAlbedo.rgb, metallicMapSample);
+    
 	// Uncomment to turn off normal mapping.
     //bumpedNormalW = pin.NormalW;
 
     // Vector from point being lit to eye. 
+    //float3 V = normalize(cameraPos - pIn.worldPos);
     float3 toEyeW = normalize(gEyePosW - pin.PosW);
 
     // Finish texture projection and sample SSAO map.
@@ -114,8 +129,9 @@ float4 PS(VertexOut pin) : SV_Target
 
     const float shininess = (1.0f - roughness) * normalMapSample.a;
     Material mat = { diffuseAlbedo, fresnelR0, shininess };
+    
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW,
-        bumpedNormalW, toEyeW, shadowFactor);
+        bumpedNormalW, toEyeW, shadowFactor, pin.PosW);
 
     float4 litColor = ambient + directLight;
 
