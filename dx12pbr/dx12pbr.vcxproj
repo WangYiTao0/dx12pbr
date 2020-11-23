@@ -150,10 +150,11 @@
     <ClCompile Include="src\Common\d3dApp.cpp" />
     <ClCompile Include="src\Common\d3dUtil.cpp" />
     <ClCompile Include="src\Common\DDSTextureLoader.cpp" />
-    <ClCompile Include="src\Common\FrameResource.cpp" />
+    <ClCompile Include="src\FrameResource.cpp" />
     <ClCompile Include="src\Common\GameTimer.cpp" />
     <ClCompile Include="src\Common\GeometryGenerator.cpp" />
     <ClCompile Include="src\Common\MathHelper.cpp" />
+    <ClCompile Include="src\Common\WICTextureLoader12.cpp" />
     <ClCompile Include="src\PBR.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -170,11 +171,12 @@
     <ClInclude Include="src\Common\d3dUtil.h" />
     <ClInclude Include="src\Common\d3dx12.h" />
     <ClInclude Include="src\Common\DDSTextureLoader.h" />
-    <ClInclude Include="src\Common\FrameResource.h" />
+    <ClInclude Include="src\FrameResource.h" />
     <ClInclude Include="src\Common\GameTimer.h" />
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\MathHelper.h" />
     <ClInclude Include="src\Common\UploadBuffer.h" />
+    <ClInclude Include="src\Common\WICTextureLoader12.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

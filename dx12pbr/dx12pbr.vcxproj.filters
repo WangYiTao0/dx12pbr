@@ -60,7 +60,10 @@
     <ClCompile Include="Imgui\imgui_widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Common\FrameResource.cpp">
+    <ClCompile Include="src\Common\WICTextureLoader12.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FrameResource.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -116,7 +119,10 @@
     <ClInclude Include="Imgui\imstb_truetype.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Common\FrameResource.h">
+    <ClInclude Include="src\Common\WICTextureLoader12.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\FrameResource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
