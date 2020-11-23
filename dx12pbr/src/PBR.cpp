@@ -273,6 +273,13 @@ void LitColumnsApp::Draw(const GameTimer& gt)
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 
+	//{
+	//	bool show_demo_window = true;
+	//	if (show_demo_window)
+	//		ImGui::ShowDemoWindow(&show_demo_window);
+	//}
+
+	//End ImGui
 	mCommandList->SetDescriptorHeaps(1, mSrvHeap.GetAddressOf());
 	ImGui::Render();
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), mCommandList.Get());
@@ -403,13 +410,18 @@ void LitColumnsApp::UpdateMaterialCBs(const GameTimer& gt)
 		XMFLOAT4 albedo = mat->DiffuseAlbedo;
 		{
 			ImGui::Begin("Material");
-			ImGui::Selectable(e.first.c_str(), true);
-			ImGui::ColorEdit4(e.first.c_str(), &mat->DiffuseAlbedo.x);
+
+			if (ImGui::CollapsingHeader(e.first.c_str()))
+			{
+				ImGui::ColorEdit4(e.first.c_str(), &mat->DiffuseAlbedo.x);
+			}
 
 			ImGui::End();
 		}
+
+
 		//if (mat->NumFramesDirty > 0)
-		//{
+		{
 			XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
 
 			MaterialConstants matConstants;
@@ -424,9 +436,9 @@ void LitColumnsApp::UpdateMaterialCBs(const GameTimer& gt)
 
 			currMaterialCB->CopyData(mat->MatCBIndex, matConstants);
 
-		//	// Next FrameResource need to be updated too.
+			// Next FrameResource need to be updated too.
 		//	mat->NumFramesDirty--;
-		//}
+		}
 	}
 }
 
@@ -460,6 +472,19 @@ void LitColumnsApp::UpdateMainPassCB(const GameTimer& gt)
 	mMainPassCB.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
 	mMainPassCB.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
 	mMainPassCB.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+
+	ImGui::Begin("Lighting");
+	ImGui::ColorEdit4("Ambient", &mMainPassCB.AmbientLight.x);
+
+	for (int i = 0; i < MaxLights; i++)
+	{
+		if (ImGui::CollapsingHeader(("light" + std::to_string(i)).c_str()))
+		{
+			
+
+		}
+	}
+	ImGui::End();
 
 	auto currPassCB = mCurrFrameResource->PassCB.get();
 	currPassCB->CopyData(0, mMainPassCB);
