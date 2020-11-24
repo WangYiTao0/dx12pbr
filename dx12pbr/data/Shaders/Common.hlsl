@@ -4,11 +4,11 @@
 
 // Defaults for number of lights.
 #ifndef NUM_DIR_LIGHTS
-    #define NUM_DIR_LIGHTS 1
+    #define NUM_DIR_LIGHTS 3
 #endif
 
 #ifndef NUM_POINT_LIGHTS
-    #define NUM_POINT_LIGHTS 4
+    #define NUM_POINT_LIGHTS 0
 #endif
 
 #ifndef NUM_SPOT_LIGHTS
@@ -24,16 +24,15 @@ struct MaterialData
 	float3   FresnelR0;
 	float    Roughness;
 	float4x4 MatTransform;
-    
 	uint     DiffuseMapIndex;
 	uint     NormalMapIndex;
     uint MetallicMapIndex;
     uint RoughnessMapIndex;
     
     uint AoMapIndex;
-	uint     MatPad1;
-	uint     MatPad2;
-    uint     MatPad3;
+    uint MatPad1;
+    uint MatPad2;
+    uint MatPad3;
 };
 
 TextureCube gCubeMap : register(t0);
@@ -79,8 +78,10 @@ cbuffer cbPass : register(b1)
     float4x4 gInvViewProj;
     float4x4 gViewProjTex;
     float4x4 gShadowTransform;
+    float4x4 Ortho;
     float3 gEyePosW;
-    float cbPerObjectPad1;
+    bool gSwitchDebugMap;
+   // float cbPerObjectPad1;
     float2 gRenderTargetSize;
     float2 gInvRenderTargetSize;
     float gNearZ;
@@ -95,7 +96,6 @@ cbuffer cbPass : register(b1)
     // are spot lights for a maximum of MaxLights per object.
     Light gLights[MaxLights];
 };
-
 
 //---------------------------------------------------------------------------------------
 // Transforms a normal map sample to world space.

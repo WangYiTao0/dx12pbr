@@ -245,10 +245,20 @@ struct Material
 	int MatCBIndex = -1;
 
 	// Index into SRV heap for diffuse texture.
-	int DiffuseSrvHeapIndex = -1;
+	int AlbedoSrvHeapIndex = -1;
 
 	// Index into SRV heap for normal texture.
 	int NormalSrvHeapIndex = -1;
+
+	// Index into SRV heap for metallic texture.
+	int MetallicSrvHeapIndex = -1;
+
+	// Index into SRV heap for Roughness texture.
+	int RoughnessSrvHeapIndex = -1;
+
+	// Index into SRV heap for Ao texture.
+	int AoSrvHeapIndex = -1;
+
 
 	// Dirty flag indicating the material has changed and we need to update the constant buffer.
 	// Because we have a material constant buffer for each FrameResource, we have to apply the

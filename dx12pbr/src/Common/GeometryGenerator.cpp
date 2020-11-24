@@ -615,14 +615,14 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float dep
 
 GeometryGenerator::MeshData GeometryGenerator::CreateQuad(float x, float y, float w, float h, float depth)
 {
-    MeshData meshData;
+	MeshData meshData;
 
 	meshData.Vertices.resize(4);
 	meshData.Indices32.resize(6);
 
 	// Position coordinates specified in NDC space.
 	meshData.Vertices[0] = Vertex(
-        x, y - h, depth,
+		x, y - h, depth,
 		0.0f, 0.0f, -1.0f,
 		1.0f, 0.0f, 0.0f,
 		0.0f, 1.0f);
@@ -634,13 +634,13 @@ GeometryGenerator::MeshData GeometryGenerator::CreateQuad(float x, float y, floa
 		0.0f, 0.0f);
 
 	meshData.Vertices[2] = Vertex(
-		x+w, y, depth,
+		x + w, y, depth,
 		0.0f, 0.0f, -1.0f,
 		1.0f, 0.0f, 0.0f,
 		1.0f, 0.0f);
 
 	meshData.Vertices[3] = Vertex(
-		x+w, y-h, depth,
+		x + w, y - h, depth,
 		0.0f, 0.0f, -1.0f,
 		1.0f, 0.0f, 0.0f,
 		1.0f, 1.0f);
@@ -653,5 +653,5 @@ GeometryGenerator::MeshData GeometryGenerator::CreateQuad(float x, float y, floa
 	meshData.Indices32[4] = 2;
 	meshData.Indices32[5] = 3;
 
-    return meshData;
+	return meshData;
 }

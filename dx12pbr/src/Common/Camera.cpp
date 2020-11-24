@@ -126,6 +126,14 @@ void Camera::SetLens(float fovY, float aspect, float zn, float zf)
 
 	XMMATRIX P = XMMatrixPerspectiveFovLH(mFovY, mAspect, mNearZ, mFarZ);
 	XMStoreFloat4x4(&mProj, P);
+
+}
+
+void Camera::SetOrtho(float width, float height, float nearZ, float farZ)
+{
+	auto O = DirectX::XMMatrixOrthographicLH(width, height, nearZ, farZ);
+
+	XMStoreFloat4x4(&mOrtho, O);
 }
 
 void Camera::LookAt(FXMVECTOR pos, FXMVECTOR target, FXMVECTOR worldUp)
@@ -164,6 +172,11 @@ XMMATRIX Camera::GetProj()const
 	return XMLoadFloat4x4(&mProj);
 }
 
+
+DirectX::XMMATRIX Camera::GetOrtho() const
+{
+	return XMLoadFloat4x4(&mOrtho);
+}
 
 XMFLOAT4X4 Camera::GetView4x4f()const
 {

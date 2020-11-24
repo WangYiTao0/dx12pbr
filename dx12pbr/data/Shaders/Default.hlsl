@@ -18,8 +18,6 @@
 // Include common HLSL code.
 #include "Common.hlsl"
 
-
-
 struct VertexIn
 {
 	float3 PosL    : POSITION;
@@ -38,7 +36,6 @@ struct VertexOut
 	float3 TangentW : TANGENT;
 	float2 TexC    : TEXCOORD;
 };
-
 
 VertexOut VS(VertexIn vin)
 {
@@ -79,13 +76,13 @@ float4 PS(VertexOut pin) : SV_Target
 	float4 diffuseAlbedo = matData.DiffuseAlbedo;
 	float3 fresnelR0 = matData.FresnelR0;
 	float  roughness = matData.Roughness;
-    
 	uint diffuseMapIndex = matData.DiffuseMapIndex;
 	uint normalMapIndex = matData.NormalMapIndex;
+    
     uint metallicMapIndex = matData.MetallicMapIndex;
     uint roughnessMapIndex = matData.RoughnessMapIndex;
     uint aoMapIndex = matData.AoMapIndex;
-	
+    
     // Dynamically look up the texture in the array.
     diffuseAlbedo *= gTextureMaps[diffuseMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
 
@@ -108,20 +105,19 @@ float4 PS(VertexOut pin) : SV_Target
 
     
     fresnelR0 = lerp(fresnelR0, diffuseAlbedo.rgb, metallicMapSample);
-    
+
 	// Uncomment to turn off normal mapping.
     //bumpedNormalW = pin.NormalW;
 
     // Vector from point being lit to eye. 
-    //float3 V = normalize(cameraPos - pIn.worldPos);
     float3 toEyeW = normalize(gEyePosW - pin.PosW);
 
     // Finish texture projection and sample SSAO map.
     pin.SsaoPosH /= pin.SsaoPosH.w;
-    float ambientAccess = gSsaoMap.Sample(gsamLinearClamp, pin.SsaoPosH.xy, 0.0f).r;
+    float ambientAccess = gSsaoMap.Sample(gsamLinearClamp, pin.SsaoPosH.xy, 0.0f).r;  
 
     // Light terms.
-    float4 ambient = ambientAccess*gAmbientLight*diffuseAlbedo;
+    float4 ambient = ambientAccess * gAmbientLight * diffuseAlbedo;
 
     // Only the first light casts a shadow.
     float3 shadowFactor = float3(1.0f, 1.0f, 1.0f);
@@ -129,10 +125,11 @@ float4 PS(VertexOut pin) : SV_Target
 
     const float shininess = (1.0f - roughness) * normalMapSample.a;
     Material mat = { diffuseAlbedo, fresnelR0, shininess };
-    
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW,
         bumpedNormalW, toEyeW, shadowFactor, pin.PosW);
 
+    
+    
     float4 litColor = ambient + directLight;
 
 	// Add in specular reflections.

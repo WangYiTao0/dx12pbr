@@ -49,6 +49,7 @@ public:
 	
 	// Set frustum.
 	void SetLens(float fovY, float aspect, float zn, float zf);
+	void SetOrtho(float width, float height, float nearZ, float farZ);
 
 	// Define camera space via LookAt parameters.
 	void LookAt(DirectX::FXMVECTOR pos, DirectX::FXMVECTOR target, DirectX::FXMVECTOR worldUp);
@@ -57,6 +58,7 @@ public:
 	// Get View/Proj matrices.
 	DirectX::XMMATRIX GetView()const;
 	DirectX::XMMATRIX GetProj()const;
+	DirectX::XMMATRIX GetOrtho()const;
 
 	DirectX::XMFLOAT4X4 GetView4x4f()const;
 	DirectX::XMFLOAT4X4 GetProj4x4f()const;
@@ -93,6 +95,7 @@ private:
 	// Cache View/Proj matrices.
 	DirectX::XMFLOAT4X4 mView = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 mProj = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 mOrtho = MathHelper::Identity4x4();
 };
 
 #endif // CAMERA_H

@@ -79,7 +79,7 @@ private:
 	virtual void OnMouseUp(WPARAM btnState, int x, int y)override;
 	virtual void OnMouseMove(WPARAM btnState, int x, int y)override;
 
-	void UpdateMainPassCB();
+	void InitMainPassCB();
 
 	void OnKeyboardInput(const GameTimer& gt);
 	void AnimateMaterials(const GameTimer& gt);
@@ -177,4 +177,5 @@ private:
 	POINT mLastMousePos;
 
 	bool m_DrawDebug = false;
+	bool m_SwitchDebugMap = false;
 };

@@ -74,7 +74,7 @@ bool SsaoApp::Initialize()
     BuildFrameResources();
     BuildPSOs();
 
-    UpdateMainPassCB();
+    InitMainPassCB();
 
     mSsao->SetPSOs(mPSOs["ssao"].Get(), mPSOs["ssaoBlur"].Get());
 
@@ -115,6 +115,7 @@ void SsaoApp::OnResize()
     D3DApp::OnResize();
 
     mCamera.SetLens(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
+    mCamera.SetOrtho(mClientWidth, mClientHeight, 1.0f, 1000.f);
 
     if (mSsao != nullptr)
     {
@@ -161,6 +162,9 @@ void SsaoApp::Update(const GameTimer& gt)
         lightDir = XMVector3TransformNormal(lightDir, R);
         XMStoreFloat3(&mRotatedLightDirections[i], lightDir);
     }
+
+	OnImGuiDraw();
+
 
     AnimateMaterials(gt);
     UpdateObjectCBs(gt);
@@ -276,7 +280,6 @@ void SsaoApp::Draw(const GameTimer& gt)
         DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Debug]);
     }
 
-    OnImGuiDraw();
 
     mCommandList->SetPipelineState(mPSOs["sky"].Get());
     DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Sky]);
@@ -316,7 +319,7 @@ void SsaoApp::OnImGuiDraw()
 {
     ImGui::Begin("DEBUG");
     ImGui::Checkbox("Enable Debug Layer", &m_DrawDebug);
-
+    ImGui::Checkbox("Switch Debug Map", &m_SwitchDebugMap);
     ImGui::End();
 }
 
@@ -335,7 +338,7 @@ void SsaoApp::OnMouseUp(WPARAM btnState, int x, int y)
 
 void SsaoApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
-    if ((btnState & MK_LBUTTON) != 0)
+    if ((btnState & MK_RBUTTON) != 0)
     {
         // Make each pixel correspond to a quarter of a degree.
         float dx = XMConvertToRadians(0.25f * static_cast<float>(x - mLastMousePos.x));
@@ -349,12 +352,28 @@ void SsaoApp::OnMouseMove(WPARAM btnState, int x, int y)
     mLastMousePos.y = y;
 }
 
-void SsaoApp::UpdateMainPassCB()
+void SsaoApp::InitMainPassCB()
 {
     mMainPassCB.AmbientLight = { 0.4f, 0.4f, 0.6f, 1.0f };
+    mMainPassCB.Lights[0].Position = { -10.0f,  10.0f, 10.0f };
+    mMainPassCB.Lights[1].Position = { 10.0f,  10.0f, 10.0f };
+    mMainPassCB.Lights[2].Position = { -10.0f, -10.0f, 10.0f };
+    //mMainPassCB.Lights[3].Position = { 10.0f, -10.0f, 10.0f };
 	mMainPassCB.Lights[0].Strength = { 0.4f, 0.4f, 0.5f };
 	mMainPassCB.Lights[1].Strength = { 0.1f, 0.1f, 0.1f };
 	mMainPassCB.Lights[2].Strength = { 0.0f, 0.0f, 0.0f };
+	//mMainPassCB.Lights[3].Strength = { 0.0f, 0.0f, 0.0f };
+
+	//mMainPassCB.Lights[0].FalloffStart = 5;
+	//mMainPassCB.Lights[1].FalloffStart = 5;
+	//mMainPassCB.Lights[2].FalloffStart = 5;
+	//mMainPassCB.Lights[3].FalloffStart = 5;
+
+	//mMainPassCB.Lights[0].FalloffEnd = 15;
+	//mMainPassCB.Lights[1].FalloffEnd = 15;
+	//mMainPassCB.Lights[2].FalloffEnd = 15;
+	//mMainPassCB.Lights[3].FalloffEnd = 15;
+
 }
 
 void SsaoApp::OnKeyboardInput(const GameTimer& gt)
@@ -386,10 +405,10 @@ void SsaoApp::UpdateObjectCBs(const GameTimer& gt)
     auto currObjectCB = mCurrFrameResource->ObjectCB.get();
     for (auto& e : mAllRitems)
     {
-        // Only update the cbuffer data if the constants have changed.  
-        // This needs to be tracked per frame resource.
-        if (e->NumFramesDirty > 0)
-        {
+        //// Only update the cbuffer data if the constants have changed.  
+        //// This needs to be tracked per frame resource.
+        //if (e->NumFramesDirty > 0)
+        //{
             XMMATRIX world = XMLoadFloat4x4(&e->World);
             XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
 
@@ -398,11 +417,12 @@ void SsaoApp::UpdateObjectCBs(const GameTimer& gt)
             XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
             objConstants.MaterialIndex = e->Mat->MatCBIndex;
 
+
             currObjectCB->CopyData(e->ObjCBIndex, objConstants);
 
-            // Next FrameResource need to be updated too.
-            e->NumFramesDirty--;
-        }
+        //    // Next FrameResource need to be updated too.
+        //    e->NumFramesDirty--;
+        //}
     }
 }
 
@@ -414,8 +434,8 @@ void SsaoApp::UpdateMaterialBuffer(const GameTimer& gt)
         // Only update the cbuffer data if the constants have changed.  If the cbuffer
         // data changes, it needs to be updated for each FrameResource.
         Material* mat = e.second.get();
-        if (mat->NumFramesDirty > 0)
-        {
+       // if (mat->NumFramesDirty > 0)
+       // {
             XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
 
             MaterialData matData;
@@ -423,14 +443,30 @@ void SsaoApp::UpdateMaterialBuffer(const GameTimer& gt)
             matData.FresnelR0 = mat->FresnelR0;
             matData.Roughness = mat->Roughness;
             XMStoreFloat4x4(&matData.MatTransform, XMMatrixTranspose(matTransform));
-            matData.AlbedoMapIndex = mat->DiffuseSrvHeapIndex;
+            matData.AlbedoMapIndex = mat->AlbedoSrvHeapIndex;
             matData.NormalMapIndex = mat->NormalSrvHeapIndex;
+			matData.MetallicMapIndex = mat->MetallicSrvHeapIndex;
+			matData.Roughness = mat->Roughness;
+			matData.AoMapIndex = mat->AlbedoSrvHeapIndex;
+
+			ImGui::Begin("Material");
+
+			if (ImGui::TreeNode(e.first.c_str()))
+			{
+				ImGui::ColorEdit4("Albedo", &mat->DiffuseAlbedo.x);
+                ImGui::SliderFloat3("FresnelR0", &mat->FresnelR0.x,0.001f,1.0f);
+				ImGui::SliderFloat("Roughness", &mat->Roughness, 0.0f, 1.0f);
+				ImGui::TreePop();
+				ImGui::Separator();
+			}
+
+			ImGui::End();
 
             currMaterialBuffer->CopyData(mat->MatCBIndex, matData);
 
             // Next FrameResource need to be updated too.
             mat->NumFramesDirty--;
-        }
+       // }
     }
 }
 
@@ -478,6 +514,7 @@ void SsaoApp::UpdateMainPassCB(const GameTimer& gt)
 {
     XMMATRIX view = mCamera.GetView();
     XMMATRIX proj = mCamera.GetProj();
+    XMMATRIX Ortho = mCamera.GetProj();
 
     XMMATRIX viewProj = XMMatrixMultiply(view, proj);
     XMMATRIX invView = XMMatrixInverse(&XMMatrixDeterminant(view), view);
@@ -502,7 +539,13 @@ void SsaoApp::UpdateMainPassCB(const GameTimer& gt)
     XMStoreFloat4x4(&mMainPassCB.InvViewProj, XMMatrixTranspose(invViewProj));
     XMStoreFloat4x4(&mMainPassCB.ViewProjTex, XMMatrixTranspose(viewProjTex));
     XMStoreFloat4x4(&mMainPassCB.ShadowTransform, XMMatrixTranspose(shadowTransform));
+
+    XMStoreFloat4x4(&mMainPassCB.Ortho, XMMatrixTranspose(Ortho));
+
     mMainPassCB.EyePosW = mCamera.GetPosition3f();
+
+    mMainPassCB.SwitchDebugMap = m_SwitchDebugMap;
+
     mMainPassCB.RenderTargetSize = XMFLOAT2((float)mClientWidth, (float)mClientHeight);
     mMainPassCB.InvRenderTargetSize = XMFLOAT2(1.0f / mClientWidth, 1.0f / mClientHeight);
     mMainPassCB.NearZ = 1.0f;
@@ -521,10 +564,15 @@ void SsaoApp::UpdateMainPassCB(const GameTimer& gt)
         //MaxLights
         for (int i = 0; i < 3; i++)
         {
-            if (ImGui::CollapsingHeader(("light [" + std::to_string(i) + "]").c_str()))
+            if (ImGui::TreeNode(("light [" + std::to_string(i) + "]").c_str()))
             {
+                ImGui::SliderFloat3("Position", &mMainPassCB.Lights[i].Position.x, -10.f, 10.0f);
                 ImGui::SliderFloat3("Direction", &mRotatedLightDirections[i].x, -1.0f, 1.0f);
-                ImGui::SliderFloat3("Strength", &mMainPassCB.Lights[i].Strength.x, 0.001f, 1.0f);
+                ImGui::SliderFloat3("Strength", &mMainPassCB.Lights[i].Strength.x, 0.001f, 5.0f);
+                //ImGui::SliderFloat("FalloffStart", &mMainPassCB.Lights[i].FalloffStart, 0.001f, 10.0f);
+                //ImGui::SliderFloat("FalloffEnd", &mMainPassCB.Lights[i].FalloffEnd, 0.001f, 20.0f);
+				ImGui::TreePop();
+				ImGui::Separator();
 
             }
         }
@@ -604,23 +652,59 @@ void SsaoApp::LoadTextures()
 {
     std::vector<std::string> texNames =
     {
-        "bricksDiffuseMap",
-        "bricksNormalMap",
-        "tileDiffuseMap",
-        "tileNormalMap",
-        "defaultDiffuseMap",
-        "defaultNormalMap",
+        "wallAlbedoMap",
+        "wallNormalMap",
+		"wallMetallicMap",
+		"wallRoughnesslMap",
+		"wallAoMap",
+
+		"tileAlbedoMap",
+		"tileNormalMap",
+		"tileMetallicMap",
+		"tileRoughnesslMap",
+		"tileAoMap",
+
+		"rusted_ironAlbedoMap",
+		"rusted_ironNormalMap",
+		"rusted_ironMetallicMap",
+		"rusted_ironRoughnesslMap",
+		"rusted_ironAoMap",
+
+	    "goldAlbedoMap",
+		"goldNormalMap",
+		"goldMetallicMap",
+		"goldRoughnesslMap",
+		"goldAoMap",
+
         "skyCubeMap"
     };
 
     std::vector<std::wstring> texFilenames =
     {
-        L"data/Textures/bricks2.dds",
-        L"data/Textures/bricks2_nmap.dds",
-        L"data/Textures/tile.dds",
-        L"data/Textures/tile_nmap.dds",
-        L"data/Textures/white1x1.dds",
-        L"data/Textures/default_nmap.dds",
+        L"data/Textures/pbr/wall/albedo.dds",
+        L"data/Textures/pbr/wall/normal.dds",
+        L"data/Textures/pbr/wall/metallic.dds",
+        L"data/Textures/pbr/wall/roughness.dds",
+        L"data/Textures/pbr/wall/ao.dds",
+
+		L"data/Textures/pbr/tile/albedo.dds",
+		L"data/Textures/pbr/tile/normal.dds",
+		L"data/Textures/pbr/tile/metallic.dds",
+		L"data/Textures/pbr/tile/roughness.dds",
+		L"data/Textures/pbr/tile/ao.dds",
+
+		L"data/Textures/pbr/rusted_iron/albedo.dds",
+		L"data/Textures/pbr/rusted_iron/normal.dds",
+		L"data/Textures/pbr/rusted_iron/metallic.dds",
+		L"data/Textures/pbr/rusted_iron/roughness.dds",
+		L"data/Textures/pbr/rusted_iron/ao.dds",
+
+		L"data/Textures/pbr/gold/albedo.dds",
+		L"data/Textures/pbr/gold/normal.dds",
+		L"data/Textures/pbr/gold/metallic.dds",
+		L"data/Textures/pbr/gold/roughness.dds",
+		L"data/Textures/pbr/gold/ao.dds",
+
         L"data/Textures/sunsetcube1024.dds"
     };
 
@@ -643,7 +727,7 @@ void SsaoApp::BuildRootSignature()
     texTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 0, 0);
 
     CD3DX12_DESCRIPTOR_RANGE texTable1;
-    texTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10, 3, 0);
+    texTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 32, 3, 0);
 
     // Root parameter can be a table, root descriptor or root constants.
     CD3DX12_ROOT_PARAMETER slotRootParameter[5];
@@ -766,7 +850,7 @@ void SsaoApp::BuildDescriptorHeaps()
     // Create the SRV heap.
     //
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-    srvHeapDesc.NumDescriptors = 18;
+    srvHeapDesc.NumDescriptors = 32;
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
@@ -778,12 +862,29 @@ void SsaoApp::BuildDescriptorHeaps()
 
     std::vector<ComPtr<ID3D12Resource>> tex2DList =
     {
-        mTextures["bricksDiffuseMap"]->Resource,
-        mTextures["bricksNormalMap"]->Resource,
-        mTextures["tileDiffuseMap"]->Resource,
-        mTextures["tileNormalMap"]->Resource,
-        mTextures["defaultDiffuseMap"]->Resource,
-        mTextures["defaultNormalMap"]->Resource
+        mTextures["wallAlbedoMap"]->Resource,
+        mTextures["wallNormalMap"]->Resource,
+		mTextures["wallMetallicMap"]->Resource,
+		mTextures["wallRoughnesslMap"]->Resource,
+		mTextures["wallAoMap"]->Resource,
+
+		mTextures["tileAlbedoMap"]->Resource,
+		mTextures["tileNormalMap"]->Resource,
+		mTextures["tileMetallicMap"]->Resource,
+		mTextures["tileRoughnesslMap"]->Resource,
+		mTextures["tileAoMap"]->Resource,
+
+		mTextures["rusted_ironAlbedoMap"]->Resource,
+		mTextures["rusted_ironNormalMap"]->Resource,
+		mTextures["rusted_ironMetallicMap"]->Resource,
+		mTextures["rusted_ironRoughnesslMap"]->Resource,
+		mTextures["rusted_ironAoMap"]->Resource,
+
+		mTextures["goldAlbedoMap"]->Resource,
+		mTextures["goldNormalMap"]->Resource,
+		mTextures["goldMetallicMap"]->Resource,
+		mTextures["goldRoughnesslMap"]->Resource,
+		mTextures["goldAoMap"]->Resource,
     };
 
     auto skyCubeMap = mTextures["skyCubeMap"]->Resource;
@@ -1326,20 +1427,28 @@ void SsaoApp::BuildFrameResources()
 
 void SsaoApp::BuildMaterials()
 {
-    auto bricks0 = std::make_unique<Material>();
-    bricks0->Name = "bricks0";
-    bricks0->MatCBIndex = 0;
-    bricks0->DiffuseSrvHeapIndex = 0;
-    bricks0->NormalSrvHeapIndex = 1;
-    bricks0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    bricks0->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
-    bricks0->Roughness = 0.3f;
+    auto wall = std::make_unique<Material>();
+    wall->Name = "wall";
+    wall->MatCBIndex = 0;
+    wall->AlbedoSrvHeapIndex = 0;
+    wall->NormalSrvHeapIndex = 1;
+	wall->MetallicSrvHeapIndex = 2;
+	wall->RoughnessSrvHeapIndex = 3;
+	wall->AoSrvHeapIndex = 4;
+
+    wall->DiffuseAlbedo = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    wall->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
+    wall->Roughness = 0.3f;
 
     auto tile0 = std::make_unique<Material>();
     tile0->Name = "tile0";
     tile0->MatCBIndex = 2;
-    tile0->DiffuseSrvHeapIndex = 2;
-    tile0->NormalSrvHeapIndex = 3;
+	tile0->AlbedoSrvHeapIndex = 5;
+	tile0->NormalSrvHeapIndex = 6;
+	tile0->MetallicSrvHeapIndex =7;
+	tile0->RoughnessSrvHeapIndex = 8;
+	tile0->AoSrvHeapIndex = 9;
+
     tile0->DiffuseAlbedo = XMFLOAT4(0.9f, 0.9f, 0.9f, 1.0f);
     tile0->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
     tile0->Roughness = 0.1f;
@@ -1347,31 +1456,41 @@ void SsaoApp::BuildMaterials()
     auto mirror0 = std::make_unique<Material>();
     mirror0->Name = "mirror0";
     mirror0->MatCBIndex = 3;
-    mirror0->DiffuseSrvHeapIndex = 4;
-    mirror0->NormalSrvHeapIndex = 5;
-    mirror0->DiffuseAlbedo = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+
+	mirror0->AlbedoSrvHeapIndex = 10;
+	mirror0->NormalSrvHeapIndex = 11;
+	mirror0->MetallicSrvHeapIndex = 12;
+	mirror0->RoughnessSrvHeapIndex = 13;
+	mirror0->AoSrvHeapIndex = 14;
+
+    mirror0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     mirror0->FresnelR0 = XMFLOAT3(0.98f, 0.97f, 0.95f);
     mirror0->Roughness = 0.1f;
 
     auto skullMat = std::make_unique<Material>();
     skullMat->Name = "skullMat";
-    skullMat->MatCBIndex = 3;
-    skullMat->DiffuseSrvHeapIndex = 4;
-    skullMat->NormalSrvHeapIndex = 5;
-    skullMat->DiffuseAlbedo = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+    skullMat->MatCBIndex = 4;
+
+	skullMat->AlbedoSrvHeapIndex = 15;
+	skullMat->NormalSrvHeapIndex = 16;
+	skullMat->MetallicSrvHeapIndex = 17;
+	skullMat->RoughnessSrvHeapIndex = 18;
+	skullMat->AoSrvHeapIndex = 19;
+
+    skullMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     skullMat->FresnelR0 = XMFLOAT3(0.6f, 0.6f, 0.6f);
     skullMat->Roughness = 0.2f;
 
     auto sky = std::make_unique<Material>();
     sky->Name = "sky";
-    sky->MatCBIndex = 4;
-    sky->DiffuseSrvHeapIndex = 6;
-    sky->NormalSrvHeapIndex = 7;
+    sky->MatCBIndex = 5;
+    sky->AlbedoSrvHeapIndex = 20;
+    sky->NormalSrvHeapIndex = 21;
     sky->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     sky->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
     sky->Roughness = 1.0f;
 
-    mMaterials["bricks0"] = std::move(bricks0);
+    mMaterials["wall"] = std::move(wall);
     mMaterials["tile0"] = std::move(tile0);
     mMaterials["mirror0"] = std::move(mirror0);
     mMaterials["skullMat"] = std::move(skullMat);
@@ -1395,27 +1514,28 @@ void SsaoApp::BuildRenderItems()
     mAllRitems.push_back(std::move(skyRitem));
 
 
-        auto quadRitem = std::make_unique<RenderItem>();
-        quadRitem->World = MathHelper::Identity4x4();
-        quadRitem->TexTransform = MathHelper::Identity4x4();
-        quadRitem->ObjCBIndex = 1;
-        quadRitem->Mat = mMaterials["bricks0"].get();
-        quadRitem->Geo = mGeometries["shapeGeo"].get();
-        quadRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-        quadRitem->IndexCount = quadRitem->Geo->DrawArgs["quad"].IndexCount;
-        quadRitem->StartIndexLocation = quadRitem->Geo->DrawArgs["quad"].StartIndexLocation;
-        quadRitem->BaseVertexLocation = quadRitem->Geo->DrawArgs["quad"].BaseVertexLocation;
+	auto quadRitem = std::make_unique<RenderItem>();
+    XMStoreFloat4x4(&quadRitem->World, XMMatrixScaling(1000.0f, 1000.0f,1.0f) * XMMatrixTranslation(0.0f, 0.0f, 0.0f));
+	//quadRitem->World = MathHelper::Identity4x4();
+	quadRitem->TexTransform = MathHelper::Identity4x4();
+	quadRitem->ObjCBIndex = 1;
+	quadRitem->Mat = mMaterials["wall"].get();
+	quadRitem->Geo = mGeometries["shapeGeo"].get();
+	quadRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	quadRitem->IndexCount = quadRitem->Geo->DrawArgs["quad"].IndexCount;
+	quadRitem->StartIndexLocation = quadRitem->Geo->DrawArgs["quad"].StartIndexLocation;
+	quadRitem->BaseVertexLocation = quadRitem->Geo->DrawArgs["quad"].BaseVertexLocation;
 
 
-        mRitemLayer[(int)RenderLayer::Debug].push_back(quadRitem.get());
-        mAllRitems.push_back(std::move(quadRitem));
+	mRitemLayer[(int)RenderLayer::Debug].push_back(quadRitem.get());
+	mAllRitems.push_back(std::move(quadRitem));
     
 
     auto boxRitem = std::make_unique<RenderItem>();
     XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 1.0f, 2.0f) * XMMatrixTranslation(0.0f, 0.5f, 0.0f));
     XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 0.5f, 1.0f));
     boxRitem->ObjCBIndex = 2;
-    boxRitem->Mat = mMaterials["bricks0"].get();
+    boxRitem->Mat = mMaterials["wall"].get();
     boxRitem->Geo = mGeometries["shapeGeo"].get();
     boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;
@@ -1471,7 +1591,7 @@ void SsaoApp::BuildRenderItems()
         XMStoreFloat4x4(&leftCylRitem->World, rightCylWorld);
         XMStoreFloat4x4(&leftCylRitem->TexTransform, brickTexTransform);
         leftCylRitem->ObjCBIndex = objCBIndex++;
-        leftCylRitem->Mat = mMaterials["bricks0"].get();
+        leftCylRitem->Mat = mMaterials["wall"].get();
         leftCylRitem->Geo = mGeometries["shapeGeo"].get();
         leftCylRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         leftCylRitem->IndexCount = leftCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
@@ -1481,7 +1601,7 @@ void SsaoApp::BuildRenderItems()
         XMStoreFloat4x4(&rightCylRitem->World, leftCylWorld);
         XMStoreFloat4x4(&rightCylRitem->TexTransform, brickTexTransform);
         rightCylRitem->ObjCBIndex = objCBIndex++;
-        rightCylRitem->Mat = mMaterials["bricks0"].get();
+        rightCylRitem->Mat = mMaterials["wall"].get();
         rightCylRitem->Geo = mGeometries["shapeGeo"].get();
         rightCylRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         rightCylRitem->IndexCount = rightCylRitem->Geo->DrawArgs["cylinder"].IndexCount;

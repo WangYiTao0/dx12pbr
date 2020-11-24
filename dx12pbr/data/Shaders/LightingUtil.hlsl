@@ -5,6 +5,9 @@
 //***************************************************************************************
 
 #define MaxLights 16
+#define PI 3.14159265359f
+// constants
+#define EPSILON 0.000000000001f
 
 struct Light
 {
@@ -20,12 +23,9 @@ struct Material
 {
     float4 DiffuseAlbedo;
     float3 FresnelR0;
-    float Roughness;
+    float Shininess;
 };
 
-#define PI 3.14159265359f
-// constants
-#define EPSILON 0.000000000001f
 
 // ----------------------------------------------------------------------------
 float DistributionGGX(float3 N, float3 H, float roughness)
@@ -94,7 +94,7 @@ float3 SchlickFresnel(float3 R0, float3 normal, float3 lightVec)
 
 float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 toEye, Material mat)
 {
-    const float m = mat.Roughness * 256.0f;
+    const float m = mat.Shininess * 256.0f;
     float3 halfVec = normalize(toEye + lightVec);
 
     float roughnessFactor = (m + 8.0f)*pow(max(dot(halfVec, normal), 0.0f), m) / 8.0f;
@@ -109,7 +109,7 @@ float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 t
     return (mat.DiffuseAlbedo.rgb + specAlbedo) * lightStrength;
 }
 
-float BRDF(Light l, float3 lightVec, float3 normal, float3 toEye, Material mat,float3 worldPos)
+float3 BRDF(Light l, float3 lightVec, float3 normal, float3 toEye, Material mat, float3 worldPos)
 {
        // calculate per-light radiance
     float3 L = normalize(l.Position.xyz - worldPos);
@@ -120,8 +120,8 @@ float BRDF(Light l, float3 lightVec, float3 normal, float3 toEye, Material mat,f
     float3 radiance = mat.DiffuseAlbedo.xyz * 300 * attenuation;
 
         // Cook-Torrance BRDF
-    float NDF = DistributionGGX(normal, H, mat.Roughness);
-    float G = GeometrySmith(normal, toEye, L, mat.Roughness);
+    float NDF = DistributionGGX(normal, H, mat.Shininess);
+    float G = GeometrySmith(normal, toEye, L, mat.Shininess);
     float3 F = fresnelSchlick(max(dot(H, toEye), 0.0), mat.FresnelR0);
            
     float3 nominator = NDF * G * F;
@@ -138,13 +138,13 @@ float BRDF(Light l, float3 lightVec, float3 normal, float3 toEye, Material mat,f
         // have diffuse lighting, or a linear blend if partly metal (pure metals
         // have no diffuse light).
    // kD *= 1.0 - metallic;
-    kD *= mat.Roughness;
+    kD *= mat.Shininess;
 
         // scale light by NdotL
     float NdotL = max(dot(normal, L), 0.0);
 
         // add to outgoing radiance Lo
-    return (kD * mat.DiffuseAlbedo.xyz / PI + specular) * radiance * NdotL;
+    return (kD * mat.DiffuseAlbedo.xyz / PI + specular) * radiance * NdotL * l.Strength;
 }
 
 //---------------------------------------------------------------------------------------
@@ -160,9 +160,7 @@ float3 ComputeDirectionalLight(Light L, Material mat, float3 normal, float3 toEy
     float3 lightStrength = L.Strength * ndotl;
 
     //return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
-    
-    return BRDF(lightStrength, lightVec, normal, toEye, mat, worldPos);
-    
+    return BRDF(L, lightVec, normal, toEye, mat, worldPos);
 }
 
 //---------------------------------------------------------------------------------------
@@ -192,9 +190,7 @@ float3 ComputePointLight(Light L, Material mat, float3 pos, float3 normal, float
     lightStrength *= att;
 
     //return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
-    
-    return BRDF(lightStrength, lightVec, normal, toEye, mat, worldPos);
-    
+    return BRDF(L, lightVec, normal, toEye, mat, worldPos);
 }
 
 //---------------------------------------------------------------------------------------
@@ -228,9 +224,7 @@ float3 ComputeSpotLight(Light L, Material mat, float3 pos, float3 normal, float3
     lightStrength *= spotFactor;
 
     //return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
-    
-    return BRDF(lightStrength, lightVec, normal, toEye, mat, worldPos);
-    
+    return BRDF(L, lightVec, normal, toEye, mat, worldPos);
 }
 
 float4 ComputeLighting(Light gLights[MaxLights], Material mat,

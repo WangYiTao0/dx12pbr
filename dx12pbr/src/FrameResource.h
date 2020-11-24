@@ -9,7 +9,7 @@ struct ObjectConstants
 	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
 	UINT     MaterialIndex;
-	UINT     ObjPad0;
+  	UINT     ObjPad0;
 	UINT     ObjPad1;
 	UINT     ObjPad2;
 };
@@ -24,8 +24,12 @@ struct PassConstants
 	DirectX::XMFLOAT4X4 InvViewProj = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 ViewProjTex = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 ShadowTransform = MathHelper::Identity4x4();
+
+	DirectX::XMFLOAT4X4 Ortho = MathHelper::Identity4x4();
+
 	DirectX::XMFLOAT3 EyePosW = { 0.0f, 0.0f, 0.0f };
-	float cbPerObjectPad1 = 0.0f;
+	//float cbPerObjectPad1 = 0.0f;
+	bool	 SwitchDebugMap = false;
 	DirectX::XMFLOAT2 RenderTargetSize = { 0.0f, 0.0f };
 	DirectX::XMFLOAT2 InvRenderTargetSize = { 0.0f, 0.0f };
 	float NearZ = 0.0f;
@@ -40,6 +44,7 @@ struct PassConstants
 	// indices [NUM_DIR_LIGHTS+NUM_POINT_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHT+NUM_SPOT_LIGHTS)
 	// are spot lights for a maximum of MaxLights per object.
 	Light Lights[MaxLights];
+
 };
 
 struct SsaoConstants
